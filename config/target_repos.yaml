@@ -1,0 +1,25 @@
+training:
+  requests:
+    url: https://github.com/psf/requests.git
+    ref: v2.31.0
+
+  flask:
+    url: https://github.com/pallets/flask.git
+    ref: 2.3.3
+
+  click:
+    url: https://github.com/pallets/click.git
+    ref: 8.1.7
+
+validation:
+  attrs:
+    url: https://github.com/python-attrs/attrs.git
+    ref: 23.2.0
+
+  jinja2:
+    url: https://github.com/pallets/jinja.git
+    ref: 3.1.3
+    
+  itsdangerous:
+  url: https://github.com/pallets/itsdangerous.git
+  ref: 2.1.2
