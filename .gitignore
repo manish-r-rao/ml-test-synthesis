@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venvs/
+
+# Coverage artifacts
+.coverage
+coverage.json
+htmlcov/
+
+# OS / editor
+.vscode/
+.DS_Store
+
+# Target repos (external)
+target-repos/
