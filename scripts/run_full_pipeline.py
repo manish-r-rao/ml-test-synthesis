@@ -20,22 +20,26 @@ from config.paths import (
     PROCESSED_DATA_DIR,
 )
 
-from analysis.from_ml import run_pipeline_from_ml
-
-
-def run_step(module_path: str):
+# -------------------------------------------------
+# Subprocess runner
+# -------------------------------------------------
+def run_step(module_path: str, args=None):
     """
     Run a Python module in a clean subprocess.
-    Used ONLY for ML stages.
+    Used for both ML and analysis stages.
     """
     print(f"\n--- [Executing: {module_path}] ---")
+
+    cmd = [sys.executable, "-m", module_path]
+    if args:
+        cmd.extend(args)
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PROJECT_ROOT)
 
     try:
         subprocess.run(
-            [sys.executable, "-m", module_path],
+            cmd,
             cwd=str(PROJECT_ROOT),
             env=env,
             check=True,
@@ -45,6 +49,9 @@ def run_step(module_path: str):
         sys.exit(1)
 
 
+# -------------------------------------------------
+# Main pipeline
+# -------------------------------------------------
 def main():
     print("🚀 STARTING MACHINE LEARNING–GUIDED CODE SMELL DETECTION PIPELINE")
 
@@ -57,22 +64,26 @@ def main():
     run_step("ml.inference")
 
     # -------------------------------------------------
-    # ONLINE ANALYSIS PHASE (in-process)
+    # ONLINE ANALYSIS PHASE
     # -------------------------------------------------
     print("\n📊 Starting post-ML analysis pipeline...")
 
-    ml_output_csv = PROCESSED_DATA_DIR / "ml_smell_predictions.csv"
-    final_output_csv = PROCESSED_DATA_DIR / "final_results.csv"
+    # ---- Coverage stage (no assumptions about existing JSONs) ----
+    print("\n🔍 Running coverage for all target repositories...")
 
-    run_pipeline_from_ml(
-        repo_base_path=str(TARGET_REPOS_DIR),
-        ml_output_csv=str(ml_output_csv),
-        output_csv=str(final_output_csv),
-    )
+    for repo_dir in TARGET_REPOS_DIR.iterdir():
+        if repo_dir.is_dir():
+            run_step(
+                "analysis.coverage",
+                args=[repo_dir.name],
+            )
+
+    # ---- Post-ML aggregation stage ----
+    print("\n🧠 Aggregating ML predictions with coverage & risk analysis...")
+    run_step("analysis.post_ml_aggregate")
 
     print("\n" + "=" * 60)
-    print("✅ PIPELINE COMPLETE")
-    print(f"📄 Final results: {final_output_csv}")
+    print("✅ PIPELINE EXECUTION COMPLETE")
     print("=" * 60)
 
 

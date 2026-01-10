@@ -18,12 +18,18 @@ REPOS = {
     },
 }
 
+# ----------------------------
+# Paths
+# ----------------------------
 ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE = ROOT / "workspace"
 TARGET_REPOS = WORKSPACE / "target-repos"
 VENVS = WORKSPACE / "venvs"
 
 
+# ----------------------------
+# Utilities
+# ----------------------------
 def run(cmd, cwd=None):
     print(f"→ {' '.join(cmd)}")
     subprocess.run(cmd, cwd=cwd, check=True)
@@ -34,21 +40,32 @@ def create_venv(path: Path):
         run([sys.executable, "-m", "venv", str(path)])
 
 
-def pip_install(venv: Path, packages):
-    python = venv / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+def pip_install(python: Path, packages):
     run([str(python), "-m", "pip", "install", "--upgrade", "pip"])
     run([str(python), "-m", "pip", "install"] + packages)
 
 
+# ----------------------------
+# Tool (project) environment
+# ----------------------------
 def setup_tool_env():
-    print("\n[SETUP] Tool environment")
+    print("\n[SETUP] Tool environment (ml-test-synthesis)")
     tool_venv = VENVS / "ml-test-synthesis"
     create_venv(tool_venv)
-    pip_install(tool_venv, ["-r", "requirements.txt"])
+
+    python = tool_venv / (
+        "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+    )
+
+    pip_install(python, ["-r", "requirements.txt"])
 
 
+# ----------------------------
+# Repository setup
+# ----------------------------
 def setup_repo(name, url, ref):
     print(f"\n[SETUP] Repo: {name}")
+
     repo_path = TARGET_REPOS / name
     venv_path = VENVS / name
 
@@ -60,7 +77,9 @@ def setup_repo(name, url, ref):
 
     create_venv(venv_path)
 
-    python = venv_path / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    python = venv_path / (
+        "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+    )
 
     # Upgrade pip
     run([str(python), "-m", "pip", "install", "--upgrade", "pip"])
@@ -70,15 +89,20 @@ def setup_repo(name, url, ref):
     if req.exists():
         run([str(python), "-m", "pip", "install", "-r", str(req)])
 
-    # 2️⃣ Install the package itself (CRITICAL)
-    run([str(python), "-m", "pip", "install", "-e", str(repo_path)])
+    # 2️⃣ Install package with test extras if available (CRITICAL)
+    try:
+        run([str(python), "-m", "pip", "install", "-e", f"{repo_path}[tests]"])
+    except subprocess.CalledProcessError:
+        # Fallback if [tests] extra is not defined
+        run([str(python), "-m", "pip", "install", "-e", str(repo_path)])
 
-    # 3️⃣ Install minimal test tooling
-    run([str(python), "-m", "pip", "install", "pytest", "coverage", "hypothesis", "freezegun"])
+    # 3️⃣ Ensure coverage tooling exists
+    run([str(python), "-m", "pip", "install", "coverage", "freezegun", "hypothesis", "pytest"])
 
 
-
-
+# ----------------------------
+# Main
+# ----------------------------
 def main():
     print("=== Setting up ML Test Synthesis Workspace ===")
 

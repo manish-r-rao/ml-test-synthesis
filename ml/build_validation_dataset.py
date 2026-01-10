@@ -28,14 +28,17 @@ FIELDNAMES = [
 
 # ---------- Utilities ----------
 
-def is_test_path(path: str) -> bool:
+def is_test_path(path: str, filename: str = "") -> bool:
     p = path.lower()
-    return (
-        "/test/" in p or
-        "/tests/" in p or
-        "\\test\\" in p or
-        "\\tests\\" in p
-    )
+    f = filename.lower()
+    
+    # Check directory
+    is_test_dir = any(x in p for x in ["/test", "/testing", "/_test", "site-packages"])
+    
+    # Check filename
+    is_test_file = f.startswith("test_") or f.endswith("_test.py") or f == "conftest.py" or f == "strategies.py"
+    
+    return is_test_dir or is_test_file
 
 
 def get_node_end_lineno(node):
@@ -218,13 +221,20 @@ def build_dataset(projects_root=TARGET_REPOS_DIR, output_csv=OUTPUT_CSV_FILE):
         print(f"Processing evaluation repo: {repo_name}")
 
         for root, dirs, files in os.walk(repo_path):
-            if is_test_path(root):
+            # Prune directory search
+            dirs[:] = [d for d in dirs if not d.startswith('.') and not "test" in d.lower()]
+            
+            if is_test_path(root): # Skip if the whole directory is a test dir
                 continue
-            dirs[:] = [d for d in dirs if not d.startswith('.')]
 
             for file in files:
                 if file.endswith('.py'):
+                    # NEW: Also check the individual filename
+                    if is_test_path(root, file):
+                        continue
+                        
                     file_path = os.path.join(root, file)
+                    # ... process file ...
                     rows = process_file(file_path, counters=counters)
                     all_rows.extend(rows)
 
