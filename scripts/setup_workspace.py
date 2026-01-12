@@ -10,6 +10,8 @@ REPOS = {
         "requests": ("https://github.com/psf/requests.git", "v2.31.0"),
         "flask": ("https://github.com/pallets/flask.git", "2.3.3"),
         "click": ("https://github.com/pallets/click.git", "8.1.7"),
+        "numpy": ("https://github.com/numpy/numpy.git", "v1.26.4"),
+        "django": ("https://github.com/django/django.git", "stable/4.2.x"),
     },
     "validation": {
         "attrs": ("https://github.com/python-attrs/attrs.git", "23.2.0"),
@@ -63,7 +65,7 @@ def setup_tool_env():
 # ----------------------------
 # Repository setup
 # ----------------------------
-def setup_repo(name, url, ref):
+def setup_repo(name, url, ref, category):
     print(f"\n[SETUP] Repo: {name}")
 
     repo_path = TARGET_REPOS / name
@@ -90,14 +92,21 @@ def setup_repo(name, url, ref):
         run([str(python), "-m", "pip", "install", "-r", str(req)])
 
     # 2️⃣ Install package with test extras if available (CRITICAL)
-    try:
-        run([str(python), "-m", "pip", "install", "-e", f"{repo_path}[tests]"])
-    except subprocess.CalledProcessError:
-        # Fallback if [tests] extra is not defined
-        run([str(python), "-m", "pip", "install", "-e", str(repo_path)])
+    if category == "validation":
+    # Validation repos MUST be runnable + coverable
+        try:
+            run([str(python), "-m", "pip", "install", "-e", f"{repo_path}[tests]"])
+        except subprocess.CalledProcessError:
+            run([str(python), "-m", "pip", "install", "-e", str(repo_path)])
 
-    # 3️⃣ Ensure coverage tooling exists
-    run([str(python), "-m", "pip", "install", "coverage", "freezegun", "hypothesis", "pytest"])
+        run([
+            str(python), "-m", "pip", "install",
+            "coverage", "pytest", "hypothesis", "freezegun"
+        ])
+    else:
+        # Training repos: NO editable install, NO tests
+        print(f"[INFO] Skipping editable install for training repo: {name}")
+
 
 
 # ----------------------------
@@ -115,7 +124,7 @@ def main():
     for category, repos in REPOS.items():
         print(f"\n[{category.upper()} REPOSITORIES]")
         for name, (url, ref) in repos.items():
-            setup_repo(name, url, ref)
+            setup_repo(name, url, ref, category)
 
     print("\n✔ Workspace setup complete")
 
