@@ -8,6 +8,7 @@ import csv
 import ast
 from collections import Counter
 
+from config.paths import VALIDATION_REPOS
 from radon.complexity import cc_visit
 from radon.raw import analyze as raw_analyze
 from radon.metrics import h_visit
